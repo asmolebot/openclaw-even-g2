@@ -18,6 +18,7 @@ const configSchema = Type.Object({
     openclawBin: Type.Optional(Type.String({ description: "OpenClaw CLI binary path. Defaults to openclaw." })),
 });
 function json(res, status, body) {
+    setCorsHeaders(res);
     res.statusCode = status;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
     res.setHeader("Cache-Control", "no-store");
@@ -26,6 +27,18 @@ function json(res, status, body) {
 }
 function sse(res, event) {
     res.write(`data: ${JSON.stringify(event)}\n\n`);
+}
+function setCorsHeaders(res) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    res.setHeader("Access-Control-Max-Age", "86400");
+}
+function options(res) {
+    setCorsHeaders(res);
+    res.statusCode = 204;
+    res.end();
+    return true;
 }
 function routePrefix(config) {
     const raw = config.routePrefix?.trim() || DEFAULT_ROUTE_PREFIX;
@@ -191,6 +204,8 @@ function chatCompletionResponse(text, model) {
     };
 }
 async function handleChatCompletions(req, res, config) {
+    if ((req.method ?? "GET").toUpperCase() === "OPTIONS")
+        return options(res);
     if ((req.method ?? "GET").toUpperCase() !== "POST") {
         res.setHeader("Allow", "POST");
         return json(res, 405, { error: { message: "Method Not Allowed" } });
@@ -208,6 +223,7 @@ async function handleChatCompletions(req, res, config) {
         const reply = truncateForGlasses(await runAgent(prompt, config), config);
         const response = chatCompletionResponse(reply, chatBody.model || config.model || "openclaw-even-g2");
         if (chatBody.stream) {
+            setCorsHeaders(res);
             res.statusCode = 200;
             res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
             res.setHeader("Cache-Control", "no-store");
@@ -256,7 +272,7 @@ export default definePluginEntry({
             path: `${prefix}/health`,
             auth: "plugin",
             match: "exact",
-            handler: async (_req, res) => json(res, 200, createStatus(config)),
+            handler: async (req, res) => ((req.method ?? "GET").toUpperCase() === "OPTIONS" ? options(res) : json(res, 200, createStatus(config))),
         });
         api.registerHttpRoute({
             path: `${prefix}/v1/chat/completions`,

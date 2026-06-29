@@ -64,6 +64,7 @@ const configSchema = Type.Object({
 });
 
 function json(res: ServerResponse, status: number, body: unknown): true {
+  setCorsHeaders(res);
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
@@ -73,6 +74,20 @@ function json(res: ServerResponse, status: number, body: unknown): true {
 
 function sse(res: ServerResponse, event: unknown): void {
   res.write(`data: ${JSON.stringify(event)}\n\n`);
+}
+
+function setCorsHeaders(res: ServerResponse): void {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Max-Age", "86400");
+}
+
+function options(res: ServerResponse): true {
+  setCorsHeaders(res);
+  res.statusCode = 204;
+  res.end();
+  return true;
 }
 
 function routePrefix(config: EvenG2Config): string {
@@ -240,6 +255,7 @@ function chatCompletionResponse(text: string, model: string): unknown {
 }
 
 async function handleChatCompletions(req: IncomingMessage, res: ServerResponse, config: EvenG2Config): Promise<true> {
+  if ((req.method ?? "GET").toUpperCase() === "OPTIONS") return options(res);
   if ((req.method ?? "GET").toUpperCase() !== "POST") {
     res.setHeader("Allow", "POST");
     return json(res, 405, { error: { message: "Method Not Allowed" } });
@@ -257,6 +273,7 @@ async function handleChatCompletions(req: IncomingMessage, res: ServerResponse, 
     const reply = truncateForGlasses(await runAgent(prompt, config), config);
     const response = chatCompletionResponse(reply, chatBody.model || config.model || "openclaw-even-g2");
     if (chatBody.stream) {
+      setCorsHeaders(res);
       res.statusCode = 200;
       res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
       res.setHeader("Cache-Control", "no-store");
@@ -307,7 +324,7 @@ export default definePluginEntry({
       path: `${prefix}/health`,
       auth: "plugin",
       match: "exact",
-      handler: async (_req, res) => json(res, 200, createStatus(config)),
+      handler: async (req, res) => ((req.method ?? "GET").toUpperCase() === "OPTIONS" ? options(res) : json(res, 200, createStatus(config))),
     });
 
     api.registerHttpRoute({
