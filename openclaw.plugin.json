@@ -1,0 +1,54 @@
+{
+  "id": "even-g2",
+  "name": "Even G2",
+  "description": "OpenClaw bridge for Even G2 smart glasses.",
+  "version": "0.1.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "apiKey": {
+        "type": "string"
+      },
+      "agent": {
+        "type": "string"
+      },
+      "model": {
+        "type": "string"
+      },
+      "sessionKey": {
+        "type": "string"
+      },
+      "routePrefix": {
+        "type": "string"
+      },
+      "timeoutSeconds": {
+        "type": "number"
+      },
+      "maxResponseChars": {
+        "type": "number"
+      },
+      "openclawBin": {
+        "type": "string"
+      }
+    }
+  },
+  "activation": {
+    "onStartup": true,
+    "onConfigPaths": [
+      "plugins.entries.even-g2"
+    ]
+  },
+  "contracts": {
+    "tools": [
+      "even_g2_status",
+      "even_g2_ask"
+    ]
+  },
+  "uiHints": {
+    "apiKey": {
+      "label": "Even G2 bearer token",
+      "sensitive": true
+    }
+  }
+}
