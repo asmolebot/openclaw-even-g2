@@ -114,6 +114,13 @@ export function textFromAgentJson(result) {
         result.result?.content ??
         "");
 }
+export function normalizeGlassesText(text) {
+    return text
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
+        .replace(/[*_`>#~]/g, "")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+}
 async function runAgent(prompt, config) {
     const args = [
         "agent",
@@ -162,9 +169,10 @@ async function runAgent(prompt, config) {
 }
 function truncateForGlasses(text, config) {
     const max = Math.max(1, Math.floor(config.maxResponseChars ?? DEFAULT_MAX_RESPONSE_CHARS));
-    if (text.length <= max)
-        return text;
-    return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+    const normalized = normalizeGlassesText(text);
+    if (normalized.length <= max)
+        return normalized;
+    return `${normalized.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
 }
 function chatCompletionResponse(text, model) {
     const created = Math.floor(Date.now() / 1000);
@@ -252,6 +260,18 @@ export default definePluginEntry({
         });
         api.registerHttpRoute({
             path: `${prefix}/v1/chat/completions`,
+            auth: "plugin",
+            match: "exact",
+            handler: async (req, res) => handleChatCompletions(req, res, config),
+        });
+        api.registerHttpRoute({
+            path: prefix,
+            auth: "plugin",
+            match: "exact",
+            handler: async (req, res) => handleChatCompletions(req, res, config),
+        });
+        api.registerHttpRoute({
+            path: `${prefix}/`,
             auth: "plugin",
             match: "exact",
             handler: async (req, res) => handleChatCompletions(req, res, config),

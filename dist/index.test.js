@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import entry, { promptFromMessages, textFromAgentJson } from "./index.js";
+import entry, { normalizeGlassesText, promptFromMessages, textFromAgentJson } from "./index.js";
 describe("even-g2", () => {
     it("declares plugin identity", () => {
         expect(entry.id).toBe("even-g2");
@@ -29,5 +29,8 @@ describe("even-g2", () => {
                 payloads: [{ text: "even g2 ready" }],
             },
         })).toBe("even g2 ready");
+    });
+    it("normalizes markdown-heavy text for glasses display", () => {
+        expect(normalizeGlassesText("**Done**: [details](https://example.test)\n\n\n`ok`")).toBe("Done: details\n\nok");
     });
 });
